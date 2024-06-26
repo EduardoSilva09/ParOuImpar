@@ -5,7 +5,10 @@ pragma solidity ^0.8.12;
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract ParOuImpar {
-    string public choice = ""; 
+    string public choicePlayer1 = ""; 
+    address public player1;
+    uint8 private numberPlayer1;
+    string public status = "";
 
     function compare(
         string memory str1,
@@ -18,38 +21,59 @@ contract ParOuImpar {
     }
 
     function choose(string memory newChoice) public {
+        
         require(
             compare(newChoice, "EVEN") || compare(newChoice, "ODD"),
             "Choose EVEN or ODD"
         ); 
-        choice = newChoice;
+
+        string memory message = string.concat(
+            "Player 1 already choose ",
+            choicePlayer1
+        );
+        require(compare(choicePlayer1, ""), message);
+
+        choicePlayer1 = newChoice;
+        player1 = msg.sender; 
+        status = string.concat(
+            "Player 1 is ",
+            Strings.toHexString(player1),
+            "and choose ",
+            choicePlayer1
+        );
     }
 
-    function random() private view returns (uint256) {
-        return uint256(keccak256(abi.encodePacked(block.timestamp, choice))) % 2;
-    }
-
-    function play(uint8 number) public view returns (string memory) {
-        require(number >= 0 && number <= 2, "Play 0, 1 or 2");
+    function play(uint8 number) public {
         require(
-            !compare(choice, ""),
+            !compare(choicePlayer1, ""),
             "First, choose your option (EVEN or ODD)"
         );
+        require(number > 0, "The number must be greater than 0.");
 
-        uint256 cpuNumber = random();
-        bool isEven = (number + cpuNumber) % 2 == 0;
-        string memory message = string.concat(
-            "Player choose ",
-            choice,
-            ", and plays ",
-            Strings.toString(number),
-            ". CPU plays ",
-            Strings.toString(cpuNumber)
-        );
+        if (msg.sender == player1) {
+            numberPlayer1 = number;
+            status = "Player 1 already played. Waiting player 2...";
+        } else {
+            require(numberPlayer1 != 0, "Player 1 needs to play first.");
+            bool isEven = (numberPlayer1 + number) % 2 == 0;
+            string memory message = string.concat(
+                "Player choose ",
+                choicePlayer1,
+                ", and plays ",
+                Strings.toString(numberPlayer1),
+                ". Player 2 plays ",
+                Strings.toString(number)
+            );
 
-        if (isEven && compare(choice, "EVEN")) {
-            return string.concat(message, ". Payer won.");
-        } else if (!isEven && compare(choice, "ODD")) return string.concat(message, ". Payer won.");
-        else return string.concat(message, ". CPU won.");
+            if (isEven && compare(choicePlayer1, "EVEN")) {
+                status = string.concat(message, ". Player 1 won.");
+            } else if (!isEven && compare(choicePlayer1, "ODD"))
+                status = string.concat(message, ". Player 1 won.");
+            else status = string.concat(message, ". Player 2 won.");
+
+            player1 = address(0);
+            choicePlayer1 = "";
+            numberPlayer1 = 0;
+        }
     }
 }
